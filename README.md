@@ -13,6 +13,18 @@ credentials on the server.
 
 ## Setup
 
+GitHub Actions publishes the bridge image to GitHub Container Registry.
+Pull it with:
+
+```bash
+docker pull ghcr.io/bonelifer/mympd-ibroadcast:latest
+```
+
+Use the published image with the same environment, volumes, and command as
+the local Compose build by setting `image: ghcr.io/bonelifer/mympd-ibroadcast:latest`
+in place of `build: .`.
+
+
 Register an app in the iBroadcast web player's developer settings.
 Copy `.env.example` to `.env` and enter the app ID. Authorize the bridge
 with your iBroadcast account, then start it:

@@ -1,0 +1,19 @@
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "MYMPD_API_HOME_ICON_SAVE",
+  "params": {
+    "replace": false,
+    "oldpos": 0,
+    "name": "iBroadcast",
+    "ligature": "",
+    "bgcolor": "#312927",
+    "color": "#ffffff",
+    "image": "ibroadcast-monogram.png",
+    "cmd": "execScriptFromOptions",
+    "options": [
+      "iBroadcast",
+      ""
+    ]
+  }
+}

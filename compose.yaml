@@ -1,0 +1,13 @@
+services:
+  ibroadcast:
+    build: .
+    network_mode: host
+    environment:
+      IBROADCAST_CLIENT_ID: ${IBROADCAST_CLIENT_ID:?Set your registered app ID}
+      MYMPD_THUMBS_DIR: /thumbs
+      MYMPD_STREAM_ORIGIN: ${MYMPD_STREAM_ORIGIN:-http://127.0.0.1:18769}
+    volumes:
+      - ${MYMPD_THUMBS_DIR:-./artwork}:/thumbs
+      - ./state:/state
+    command: ["serve", "--token-file", "/state/token.json"]
+    restart: unless-stopped

@@ -1,0 +1,15 @@
+name: Bug report
+description: Report a problem with the iBroadcast integration
+labels: ["bug"]
+body:
+  - type: textarea
+    id: behavior
+    attributes:
+      label: What happened?
+      description: Include steps to reproduce and what you expected.
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: myMPD and MPD versions

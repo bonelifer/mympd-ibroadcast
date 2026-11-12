@@ -19,7 +19,7 @@
     button.type = "button";
     button.className = "btn btn-secondary me-2 mb-2";
     const icon = document.createElement("img");
-    icon.src = new URL("ibroadcast.png", document.currentScript.src).href;
+    icon.src = new URL("thumbs/ibroadcast-monogram.png", document.currentScript.src).href;
     icon.alt = "";
     icon.width = 24;
     icon.height = 24;

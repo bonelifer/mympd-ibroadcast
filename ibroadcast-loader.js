@@ -1,6 +1,6 @@
 (() => {
     const script = document.createElement("script");
-    const url = new URL("browse/pics/ibroadcast-playback.js?v=2", document.currentScript.src).href;
+    const url = new URL("browse/pics/ibroadcast-playback.js?v=3", document.currentScript.src).href;
     const policy = window.trustedTypes?.createPolicy("ibroadcast-player", {
         createScriptURL(candidate) {
             if (candidate !== url) {

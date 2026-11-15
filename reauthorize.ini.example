@@ -1,0 +1,30 @@
+# Settings for reauthorize.py. The live copy is
+# ~/.config/mympd-ibroadcast/reauthorize.ini; keep it readable only by you.
+
+# Bridge address, used to ask /health whether the login still works.
+bridge_url = http://127.0.0.1:18769
+
+# Token file the bridge reads (its /state/token.json on the host).
+token_file = ~/Desktop/hl/dockhand/data/stacks/ibroadcast/data/token.json
+
+# The bridge's .env file, read for IBROADCAST_CLIENT_ID.
+env_file = ~/Desktop/hl/dockhand/data/stacks/ibroadcast/.env
+
+# Ask for permission to save playlists to iBroadcast, like
+# `authorize --write-playlists`.
+write_playlists = true
+
+# Open Browser Control bridge for the running Firefox.
+firefox_bridge = ws://127.0.0.1:9334
+
+# Gotify server for "login needs attention" alerts.
+gotify_url = http://127.0.0.1:8522
+
+# App token from Gotify's Apps page. Alerts print to the log while empty.
+gotify_token =
+
+# Priority of failure alerts; success notes are sent 3 lower.
+gotify_priority = 5
+
+# Minutes to wait after a failed renewal before the timer tries again.
+retry_minutes = 120

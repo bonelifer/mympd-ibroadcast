@@ -1,0 +1,8 @@
+# Renews a rejected iBroadcast login through Firefox (see reauthorize.py).
+# Install as a user unit; edit ExecStart if the repository lives elsewhere.
+[Unit]
+Description=Renew a rejected iBroadcast bridge login through Firefox
+
+[Service]
+Type=oneshot
+ExecStart=%h/Desktop/repos/mympd-ibroadcast/reauthorize.py check

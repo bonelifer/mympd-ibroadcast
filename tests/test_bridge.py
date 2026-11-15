@@ -4,6 +4,7 @@ Run from the repository root with: python3 -m unittest discover -s tests
 """
 
 import json
+import os
 import sys
 import tempfile
 import time
@@ -51,8 +52,8 @@ class RefreshErrorTest(unittest.TestCase):
         self.assertNotIn("r" * 64, message)
 
 
-class HandlerLoggingTest(unittest.TestCase):
-    """A 502 from the bridge must log the underlying error."""
+class BridgeServerTest(unittest.TestCase):
+    """Run a bridge on a free port with an expired token."""
 
     def setUp(self) -> None:
         self.directory = tempfile.TemporaryDirectory()
@@ -67,6 +68,10 @@ class HandlerLoggingTest(unittest.TestCase):
         self.server.shutdown()
         self.server.server_close()
         self.directory.cleanup()
+
+
+class HandlerLoggingTest(BridgeServerTest):
+    """A 502 from the bridge must log the underlying error."""
 
     def request(self, path: str) -> tuple[int, list[str]]:
         """Fetch a path and return the status with any logged errors."""
@@ -97,6 +102,33 @@ class HandlerLoggingTest(unittest.TestCase):
         status, logged = self.request("/browse?mode=genre")
         self.assertEqual(status, 502)
         self.assertTrue(any("invalid_grant" in line for line in logged), logged)
+
+
+class HealthAndReloadTest(BridgeServerTest):
+    """/health reports the login state; a replaced token file is picked up."""
+
+    def health(self) -> dict:
+        """Fetch /health with the refresh mocked as rejected."""
+        port = self.server.server_address[1]
+        with mock.patch.object(bridge, "token_request",
+                               return_value=REJECTED_REFRESH):
+            with urlopen(f"http://127.0.0.1:{port}/health", timeout=5) as response:
+                return json.load(response)
+
+    def test_health_reports_rejected_login(self) -> None:
+        self.assertEqual(self.health()["auth"], "rejected")
+
+    def test_health_picks_up_replaced_token_file(self) -> None:
+        self.assertEqual(self.health()["auth"], "rejected")
+        path = self.server.library.path
+        path.write_text(json.dumps({
+            "access_token": "n" * 64, "refresh_token": "m" * 64,
+            "token_type": "Bearer", "expires_in": 3600,
+            "expires_at": time.time() + 3600,
+        }), encoding="utf-8")
+        os.utime(path, ns=(time.time_ns(), time.time_ns() + 1_000_000))
+        self.assertEqual(self.health(), {"auth": "ok"})
+        self.assertEqual(self.server.library.access_token(), "n" * 64)
 
 
 if __name__ == "__main__":

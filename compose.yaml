@@ -1,6 +1,6 @@
 services:
   ibroadcast:
-    build: .
+    image: ghcr.io/bonelifer/mympd-ibroadcast:latest
     network_mode: host
     environment:
       IBROADCAST_CLIENT_ID: ${IBROADCAST_CLIENT_ID:?Set your registered app ID}

@@ -13,17 +13,12 @@ credentials on the server.
 
 ## Setup
 
-GitHub Actions publishes the bridge image to GitHub Container Registry.
-Pull it with:
-
-```bash
-docker pull ghcr.io/bonelifer/mympd-ibroadcast:latest
-```
-
-Use the published image with the same environment, volumes, and command as
-the local Compose build by setting `image: ghcr.io/bonelifer/mympd-ibroadcast:latest`
-in place of `build: .`.
-
+GitHub Actions builds the bridge image on every push to `main` and
+publishes it to GitHub Container Registry as
+`ghcr.io/bonelifer/mympd-ibroadcast:latest`. `compose.yaml` uses that image.
+Update a running bridge with `docker compose pull && docker compose up -d`.
+To run your own changes instead, build the same tag locally with
+`docker build -t ghcr.io/bonelifer/mympd-ibroadcast:latest .` first.
 
 Register an app in the iBroadcast web player's developer settings.
 Copy `.env.example` to `.env` and enter the app ID. Authorize the bridge
@@ -31,7 +26,7 @@ with your iBroadcast account, then start it:
 
 ```bash
 mkdir -m 700 -p state
-docker compose build
+docker compose pull
 docker compose run --rm ibroadcast authorize --token-file /state/token.json --write-playlists
 docker compose up -d
 ```

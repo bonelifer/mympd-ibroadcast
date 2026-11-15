@@ -69,6 +69,33 @@ Append the contents of
 `ibroadcast-loader.js` to `config/custom_js` once. Restart myMPD and reload
 the browser.
 
+## Automatic login renewal
+
+The bridge renews its hourly access token on its own. If iBroadcast stops
+accepting the saved login altogether, `reauthorize.py` can sign it in again
+through your running Firefox, with no password stored. It needs Firefox
+signed in to iBroadcast and the Open Browser Control extension connected to
+its local bridge. It opens the sign-in link, clicks Continue and Allow for
+its own code only, and saves the new token where the bridge reads it. The
+bridge uses the new token on its next request, without a restart.
+
+Run `./reauthorize.py` for its options. The first run sets up its own Python
+environment and creates `~/.config/mympd-ibroadcast/reauthorize.ini` from
+`reauthorize.ini.example`; add a Gotify app token there for alerts. To check
+every 15 minutes, install the user timer:
+
+```bash
+cp systemd/mympd-ibroadcast-reauthorize.* ~/.config/systemd/user/
+systemctl --user daemon-reload
+systemctl --user enable --now mympd-ibroadcast-reauthorize.timer
+```
+
+Each check asks the bridge's `/health` endpoint and renews only when the
+login was rejected. If renewal cannot finish (Firefox closed, signed out of
+iBroadcast, an unfamiliar page, or the code expiring), it sends one Gotify
+alert per outage and tries again after `retry_minutes` (two hours by
+default).
+
 ## Playback artwork
 
 Set `MYMPD_THUMBS_DIR` in Compose's `.env` to the absolute path of myMPD's

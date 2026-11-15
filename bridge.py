@@ -122,30 +122,52 @@ def records(section: dict) -> dict:
     }
 
 
+class AuthorizationRejected(ValueError):
+    """iBroadcast no longer accepts the saved refresh token."""
+
+
 class Library:
     """Keep OAuth credentials and a short-lived library snapshot."""
 
     def __init__(self, client_id: str, path: Path):
         self.client_id = client_id
         self.path = path
-        self.token = json.loads(path.read_text(encoding="utf-8"))
+        self.token_mtime = None
+        self.reload_token()
         self.lock = Lock()
         self.updated = 0
         self.catalog = {}
 
+    def reload_token(self) -> bool:
+        """Load the token file if something else replaced it.
+
+        A new authorization (for example from reauthorize.py) then takes
+        effect on the next request without restarting the bridge.
+        """
+        mtime = self.path.stat().st_mtime_ns
+        if mtime == self.token_mtime:
+            return False
+        self.token = json.loads(self.path.read_text(encoding="utf-8"))
+        self.token_mtime = mtime
+        return True
+
     def access_token(self, refresh: bool = False) -> str:
         """Return a valid token while the library lock is held."""
+        self.reload_token()
         if refresh or self.token["expires_at"] < time.time() + 30:
             token = token_request(
                 self.client_id, "refresh_token",
                 refresh_token=self.token["refresh_token"],
             )
             if error := token.get("error"):
-                raise ValueError(
+                if self.reload_token():
+                    return self.access_token(refresh)
+                raise AuthorizationRejected(
                     f"iBroadcast refused the refresh token ({error}); "
                     "stop the bridge and run authorize again"
                 )
             self.token = save_token(self.path, token)
+            self.token_mtime = self.path.stat().st_mtime_ns
         return self.token["access_token"]
 
     def api(self, endpoint: str, mode: str, **fields) -> dict:
@@ -286,6 +308,9 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:
         """Route requests by resource and numeric ID."""
         target = urlsplit(self.path)
+        if target.path == "/health":
+            self.send_health()
+            return
         if target.path == "/browse":
             try:
                 library = self.server.library
@@ -340,6 +365,26 @@ class Handler(BaseHTTPRequestHandler):
                 shutil.copyfileobj(response, self.wfile, length=65536)
             except OSError:
                 self.close_connection = True
+
+    def send_health(self) -> None:
+        """Report whether the saved iBroadcast login still works.
+
+        "auth" is "ok", "rejected" (iBroadcast refused the refresh token, so
+        authorize must run again), or "unknown" (the check itself failed, for
+        example a network error). Refreshes only when the access token is
+        due, exactly as a library request would.
+        """
+        library = self.server.library
+        try:
+            with library.lock:
+                library.access_token()
+            status = {"auth": "ok"}
+        except AuthorizationRejected as error:
+            status = {"auth": "rejected", "error": str(error)}
+        except (KeyError, OSError, TypeError, ValueError) as error:
+            self.log_error("Health check failed: %s: %s", type(error).__name__, error)
+            status = {"auth": "unknown", "error": f"{type(error).__name__}: {error}"}
+        self.send_json(status)
 
     def send_failure(self, message: str, error: Exception) -> None:
         """Log the underlying error, then answer with a generic 502.

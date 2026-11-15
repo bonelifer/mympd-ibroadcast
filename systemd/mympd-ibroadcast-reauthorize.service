@@ -5,4 +5,4 @@ Description=Renew a rejected iBroadcast bridge login through Firefox
 
 [Service]
 Type=oneshot
-ExecStart=%h/Desktop/repos/mympd-ibroadcast/reauthorize.py check
+ExecStart=%h/Desktop/repos/music/mympd-ibroadcast/reauthorize.py check

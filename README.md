@@ -46,6 +46,11 @@ for myMPD and MPD using host networking. Any local process that can reach
 the listener can browse and play the connected library. Stop the bridge
 before reauthorizing the account.
 
+If every request fails with a 502, check `docker compose logs ibroadcast`.
+The bridge logs the underlying error there. A refresh token rejected with
+`invalid_grant` means iBroadcast no longer accepts the saved credentials:
+stop the bridge, run the `authorize` command above again, and start it.
+
 Enable Lua scripting in myMPD and install the picker:
 
 ```bash

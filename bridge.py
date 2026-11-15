@@ -140,8 +140,11 @@ class Library:
                 self.client_id, "refresh_token",
                 refresh_token=self.token["refresh_token"],
             )
-            if token.get("error"):
-                raise ValueError("Run iBroadcast authorization again")
+            if error := token.get("error"):
+                raise ValueError(
+                    f"iBroadcast refused the refresh token ({error}); "
+                    "stop the bridge and run authorize again"
+                )
             self.token = save_token(self.path, token)
         return self.token["access_token"]
 
@@ -168,9 +171,11 @@ class Library:
             if data.get("authenticated") is False:
                 continue
             if data.get("result") is False:
-                break
+                detail = data.get("message")
+                raise ValueError(f"iBroadcast {mode} request failed"
+                                 + (f": {detail}" if detail else ""))
             return data
-        raise ValueError("iBroadcast API request failed")
+        raise ValueError(f"iBroadcast {mode} request was not authenticated")
 
     def snapshot(self) -> dict:
         """Return a library snapshot, refreshing it every five minutes."""
@@ -287,8 +292,8 @@ class Handler(BaseHTTPRequestHandler):
                 with library.lock:
                     choices = browse(library.snapshot(), parse_qs(target.query))
                 self.send_page(choices, parse_qs(target.query))
-            except (KeyError, OSError, TypeError, ValueError):
-                self.send_error(502, "Could not browse iBroadcast")
+            except (KeyError, OSError, TypeError, ValueError) as error:
+                self.send_failure("Could not browse iBroadcast", error)
             return
         route = re.fullmatch(
             r"/(artists|albums|tracks|stream)(?:/([0-9]+))?", target.path
@@ -320,8 +325,8 @@ class Handler(BaseHTTPRequestHandler):
             if re.fullmatch(r"bytes=[0-9]+-[0-9]*", byte_range):
                 request.add_header("Range", byte_range)
             response = urlopen(request, timeout=15)
-        except (KeyError, OSError, ValueError, TypeError):
-            self.send_error(502, "Could not load iBroadcast media or library")
+        except (KeyError, OSError, ValueError, TypeError) as error:
+            self.send_failure("Could not load iBroadcast media or library", error)
             return
 
         with response:
@@ -335,6 +340,15 @@ class Handler(BaseHTTPRequestHandler):
                 shutil.copyfileobj(response, self.wfile, length=65536)
             except OSError:
                 self.close_connection = True
+
+    def send_failure(self, message: str, error: Exception) -> None:
+        """Log the underlying error, then answer with a generic 502.
+
+        Exception text never includes tokens: token values are only sent
+        in headers and query strings, which these exceptions do not echo.
+        """
+        self.log_error("%s: %s: %s", message, type(error).__name__, error)
+        self.send_error(502, message)
 
     def send_choices(self, catalog: dict, kind: str, parent: str | None,
                      params: dict) -> None:
@@ -413,8 +427,8 @@ class Handler(BaseHTTPRequestHandler):
                     make_public=False,
                 )
                 library.updated = 0
-        except (KeyError, OSError, TypeError, ValueError):
-            self.send_error(502, "Could not save playlist to iBroadcast")
+        except (KeyError, OSError, TypeError, ValueError) as error:
+            self.send_failure("Could not save playlist to iBroadcast", error)
             return
         self.send_json({"saved": True})
 
@@ -449,8 +463,9 @@ def main() -> None:
             server.library = Library(client_id, args.token_file)
             with server:
                 server.serve_forever()
-    except (KeyError, OSError, TypeError, ValueError):
-        parser.exit(1, "iBroadcast setup failed. Check the app ID and token file.\n")
+    except (KeyError, OSError, TypeError, ValueError) as error:
+        parser.exit(1, "iBroadcast setup failed. Check the app ID and token file."
+                    f" ({type(error).__name__}: {error})\n")
 
 
 if __name__ == "__main__":
